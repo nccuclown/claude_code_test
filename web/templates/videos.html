@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+
+{% block title %}视频列表 - YouTube 视频摘要工具{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <span>📚 我的视频收藏</span>
+        <span class="badge badge-info" id="video-count">加载中...</span>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-container">
+        <input
+            type="text"
+            id="search-input"
+            class="search-input"
+            placeholder="搜索视频标题、标签或分类..."
+        >
+        <span class="search-icon">🔍</span>
+    </div>
+
+    <!-- 筛选器 -->
+    <div class="d-flex gap-2 mb-3">
+        <button class="btn btn-outline" data-filter="all">全部</button>
+        <button class="btn btn-outline" data-filter="added">已添加</button>
+        <button class="btn btn-outline" data-filter="downloaded">已下载</button>
+        <button class="btn btn-outline" data-filter="summarized">已摘要</button>
+    </div>
+
+    <!-- 加载状态 -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">加载中...</div>
+    </div>
+
+    <!-- 空状态 -->
+    <div id="empty-state" class="empty-state" style="display: none;">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">还没有视频</div>
+        <div class="empty-text">点击下方按钮添加你的第一个视频</div>
+        <a href="/" class="btn btn-primary">添加视频</a>
+    </div>
+
+    <!-- 视频列表 -->
+    <div id="videos-container" class="video-grid" style="display: none;"></div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/videos.js"></script>
+{% endblock %}

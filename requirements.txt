@@ -1,5 +1,12 @@
+# 核心依赖
 yt-dlp>=2023.3.4
 anthropic>=0.18.0
 openai>=1.12.0
 requests>=2.31.0
 python-dateutil>=2.8.2
+
+# Web 应用依赖
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+jinja2>=3.1.3
+python-multipart>=0.0.6

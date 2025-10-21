@@ -2,14 +2,18 @@
 
 一个强大的 YouTube 视频知识提取工具，帮助你快速吸收视频内容。
 
+**✨ 现已支持 Web 界面！** 在浏览器中轻松使用，无需命令行。
+
 ## 功能特点
 
-- **收藏管理**: 轻松保存想看的 YouTube 视频链接
-- **字幕下载**: 自动下载多语言字幕（支持中文、英文等）
-- **AI 摘要**: 使用 Claude/GPT 生成结构化摘要
-- **智能分类**: 自动识别视频分类和标签
-- **快速搜索**: 按标题、分类、标签搜索视频
-- **知识管理**: 统计分析你的学习内容
+- **🌐 Web 界面**: 美观易用的网页界面（推荐）
+- **💻 CLI 命令行**: 强大的命令行工具
+- **📚 收藏管理**: 轻松保存想看的 YouTube 视频链接
+- **📄 字幕下载**: 自动下载多语言字幕（支持中文、英文等）
+- **🤖 AI 摘要**: 使用 Claude/GPT 生成结构化摘要
+- **🏷️ 智能分类**: 自动识别视频分类和标签
+- **🔍 快速搜索**: 按标题、分类、标签搜索视频
+- **📊 统计分析**: 可视化你的学习数据
 
 ## 快速开始
 
@@ -46,7 +50,58 @@ ANTHROPIC_API_KEY=your_anthropic_api_key_here
 - Anthropic Claude: https://console.anthropic.com/
 - OpenAI: https://platform.openai.com/api-keys
 
-### 3. 开始使用
+### 3. 启动应用
+
+#### 🌐 Web 版本（推荐）
+
+```bash
+# 快速启动
+./run_web.sh
+
+# 或直接运行
+python run_web.py
+```
+
+然后在浏览器中访问：
+- **Web 界面**: http://localhost:8000
+- **API 文档**: http://localhost:8000/docs
+
+#### 💻 CLI 版本
+
+```bash
+# 查看帮助
+python main.py --help
+```
+
+---
+
+## 📖 使用指南
+
+### Web 界面使用（推荐）
+
+1. **启动服务器**
+   ```bash
+   ./run_web.sh
+   ```
+
+2. **打开浏览器**
+   访问 http://localhost:8000
+
+3. **添加视频**
+   - 在首页粘贴 YouTube 链接
+   - 选择字幕语言
+   - 点击"一键处理"按钮
+
+4. **查看摘要**
+   - 自动跳转到视频详情页
+   - 查看 AI 生成的摘要和关键要点
+
+5. **管理视频**
+   - 在"视频列表"页查看所有视频
+   - 使用搜索框快速查找
+   - 查看统计信息
+
+### CLI 命令行使用
 
 #### 一键处理视频（推荐）
 
@@ -212,18 +267,36 @@ python main.py stats
 
 ```
 youtube-summarizer/
-├── src/
-│   ├── __init__.py
-│   ├── downloader.py    # YouTube 字幕下载器
-│   ├── summarizer.py    # AI 摘要生成器
-│   ├── storage.py       # 数据存储管理
-│   └── cli.py           # 命令行界面
+├── src/                      # 核心模块
+│   ├── downloader.py         # YouTube 字幕下载器
+│   ├── summarizer.py         # AI 摘要生成器
+│   ├── storage.py            # 数据存储管理
+│   └── cli.py                # 命令行界面
+├── web/                      # Web 应用
+│   ├── api.py                # FastAPI 后端
+│   ├── templates/            # HTML 模板
+│   │   ├── base.html
+│   │   ├── index.html        # 首页
+│   │   ├── videos.html       # 视频列表
+│   │   ├── video_detail.html # 视频详情
+│   │   └── stats.html        # 统计页面
+│   └── static/               # 静态资源
+│       ├── css/
+│       │   └── style.css     # 样式文件
+│       └── js/
+│           ├── common.js     # 公共函数
+│           ├── index.js      # 首页逻辑
+│           ├── videos.js     # 列表页逻辑
+│           ├── video_detail.js
+│           └── stats.js
 ├── data/
-│   └── videos.json      # 视频数据存储
-├── main.py              # 程序入口
-├── requirements.txt     # 依赖包
-├── .env.example         # 环境变量示例
-├── .gitignore
+│   └── videos.json           # 视频数据存储
+├── main.py                   # CLI 程序入口
+├── run_web.py                # Web 应用入口
+├── run_web.sh                # Web 快速启动脚本
+├── setup.sh                  # 安装脚本
+├── requirements.txt          # 依赖包
+├── .env.example              # 环境变量示例
 └── README.md
 ```
 
@@ -333,15 +406,51 @@ for url in "${urls[@]}"; do
 done
 ```
 
+## 技术栈
+
+### 后端
+- **FastAPI**: 现代、快速的 Web 框架
+- **yt-dlp**: YouTube 下载工具
+- **Anthropic Claude / OpenAI GPT**: AI 摘要生成
+
+### 前端
+- **HTML5 + CSS3**: 响应式设计
+- **Vanilla JavaScript**: 无框架依赖
+- **RESTful API**: 前后端分离
+
+## 部署选项
+
+### 本地运行
+```bash
+./run_web.sh
+# 访问 http://localhost:8000
+```
+
+### 局域网访问
+其他设备可以通过你的 IP 地址访问，例如：
+```
+http://192.168.1.100:8000
+```
+
+### 云端部署
+可以部署到：
+- Railway
+- Render
+- DigitalOcean
+- AWS / Google Cloud / Azure
+
 ## 未来计划
 
-- [ ] Web 界面
+- [x] Web 界面 ✅
+- [x] 响应式设计 ✅
+- [x] 实时进度显示 ✅
 - [ ] 导出功能（Markdown, PDF）
 - [ ] 笔记功能
 - [ ] 观看进度跟踪
 - [ ] 播放列表批量导入
 - [ ] 视频推荐
 - [ ] 多用户支持
+- [ ] Docker 容器化
 
 ## 贡献
 

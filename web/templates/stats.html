@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block title %}统计信息 - YouTube 视频摘要工具{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">📊 统计信息</div>
+
+    <!-- 加载状态 -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">加载中...</div>
+    </div>
+
+    <!-- 总体统计 -->
+    <div id="stats-overview" class="stats-grid" style="display: none;"></div>
+
+    <!-- 分类统计 -->
+    <div id="categories-section" style="display: none;">
+        <h3 class="summary-title">📂 分类统计</h3>
+        <div id="categories-list"></div>
+    </div>
+
+    <!-- 热门标签 -->
+    <div id="tags-section" style="display: none;">
+        <h3 class="summary-title">🏷️ 热门标签</h3>
+        <div id="tags-cloud" class="video-tags"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="/static/js/stats.js"></script>
+{% endblock %}
