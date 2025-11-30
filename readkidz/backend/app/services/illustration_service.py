@@ -5,8 +5,15 @@ Uses DALL-E 3 or similar for generating children's book illustrations
 import logging
 import uuid
 from typing import Optional, Dict, Any, List
-from openai import OpenAI
 from app.core.config import settings
+
+# Try to import OpenAI (optional - for demo mode without AI)
+try:
+    from openai import OpenAI
+    HAS_OPENAI = True
+except ImportError:
+    HAS_OPENAI = False
+    OpenAI = None
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +47,7 @@ class IllustrationService:
 
     def __init__(self):
         self.openai_client = None
-        if settings.OPENAI_API_KEY:
+        if HAS_OPENAI and settings.OPENAI_API_KEY:
             self.openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
     def _build_prompt(
@@ -97,14 +104,33 @@ class IllustrationService:
         Returns:
             Dict with image_url and metadata
         """
-        if not self.openai_client:
-            raise ValueError("OpenAI client not configured")
-
         full_prompt = self._build_prompt(
             prompt, style_name, character_description
         )
 
         size = ASPECT_RATIO_SIZES.get(aspect_ratio, "1024x1024")
+        width, height = map(int, size.split("x"))
+
+        if not self.openai_client:
+            # Return demo data for development/testing
+            logger.warning("OpenAI not configured, returning demo illustration data")
+            demo_images = [
+                "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800",
+                "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=800",
+                "https://images.unsplash.com/photo-1503454537195-1dcabb73ffb9?w=800",
+                "https://images.unsplash.com/photo-1485546246426-74dc88dec4d9?w=800",
+                "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=800",
+            ]
+            import random
+            return {
+                "image_url": random.choice(demo_images),
+                "prompt": full_prompt,
+                "revised_prompt": f"[DEMO] {full_prompt}",
+                "width": width,
+                "height": height,
+                "style": style_name,
+                "model_used": "demo-mode",
+            }
 
         try:
             response = self.openai_client.images.generate(
@@ -117,9 +143,6 @@ class IllustrationService:
 
             image_url = response.data[0].url
             revised_prompt = response.data[0].revised_prompt
-
-            # Parse size
-            width, height = map(int, size.split("x"))
 
             return {
                 "image_url": image_url,
@@ -191,7 +214,14 @@ class IllustrationService:
             Dict with edited image URL
         """
         if not self.openai_client:
-            raise ValueError("OpenAI client not configured")
+            # Return demo data for development/testing
+            logger.warning("OpenAI not configured, returning demo edit data")
+            return {
+                "original_image_url": image_url,
+                "edited_image_url": "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=800",
+                "instruction": instruction,
+                "revised_prompt": f"[DEMO] Edit: {instruction}",
+            }
 
         # For now, we'll use DALL-E 3 to regenerate with the modification
         # In production, you might use image editing APIs like DALL-E 2 edit

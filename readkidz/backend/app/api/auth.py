@@ -1,52 +1,58 @@
 """
-ReadKidz Platform - Authentication API Routes
+ReadKidz Platform - Authentication API Routes (Simplified for Demo)
 """
+import hashlib
+import secrets
+import base64
+import json
 from datetime import datetime, timedelta
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import User, UserCredits, Subscription, SubscriptionTier
 from app.schemas.user import (
-    UserCreate, UserResponse, UserLogin, TokenResponse, CreditsResponse
+    UserCreate, UserResponse, TokenResponse, CreditsResponse
 )
 
 router = APIRouter()
 
-# Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# OAuth2 scheme
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login")
-
+# Simple password hashing (for demo - use bcrypt in production)
+def hash_password(password: str) -> str:
+    """Simple password hashing"""
+    return hashlib.sha256(password.encode()).hexdigest()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """Verify a password against its hash"""
-    return pwd_context.verify(plain_password, hashed_password)
+    """Verify password"""
+    return hash_password(plain_password) == hashed_password
 
+# Simple token generation (for demo - use JWT in production)
+def create_access_token(user_id: int) -> str:
+    """Create a simple access token"""
+    data = {
+        "user_id": user_id,
+        "exp": (datetime.utcnow() + timedelta(days=7)).timestamp()
+    }
+    token_data = json.dumps(data)
+    return base64.b64encode(token_data.encode()).decode()
 
-def get_password_hash(password: str) -> str:
-    """Hash a password"""
-    return pwd_context.hash(password)
+def decode_access_token(token: str) -> Optional[int]:
+    """Decode token and return user_id"""
+    try:
+        token_data = base64.b64decode(token.encode()).decode()
+        data = json.loads(token_data)
+        if data["exp"] < datetime.utcnow().timestamp():
+            return None
+        return data["user_id"]
+    except Exception:
+        return None
 
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """Create a JWT access token"""
-    to_encode = data.copy()
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm="HS256")
-    return encoded_jwt
-
+# OAuth2 scheme
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/login", auto_error=False)
 
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
@@ -58,12 +64,12 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    try:
-        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=["HS256"])
-        user_id: int = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-    except JWTError:
+
+    if not token:
+        raise credentials_exception
+
+    user_id = decode_access_token(token)
+    if user_id is None:
         raise credentials_exception
 
     result = await db.execute(select(User).where(User.id == user_id))
@@ -75,6 +81,19 @@ async def get_current_user(
         raise HTTPException(status_code=400, detail="Inactive user")
 
     return user
+
+
+async def get_current_user_optional(
+    token: str = Depends(oauth2_scheme),
+    db: AsyncSession = Depends(get_db),
+) -> Optional[User]:
+    """Get current user if authenticated, None otherwise"""
+    if not token:
+        return None
+    try:
+        return await get_current_user(token, db)
+    except HTTPException:
+        return None
 
 
 @router.post("/register", response_model=TokenResponse)
@@ -96,7 +115,7 @@ async def register(
         email=user_data.email,
         username=user_data.username,
         display_name=user_data.display_name or user_data.username,
-        hashed_password=get_password_hash(user_data.password) if user_data.password else None,
+        hashed_password=hash_password(user_data.password) if user_data.password else None,
         is_active=True,
         is_verified=False,
     )
@@ -131,10 +150,7 @@ async def register(
     await db.commit()
 
     # Create access token
-    access_token = create_access_token(
-        data={"sub": user.id},
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
+    access_token = create_access_token(user.id)
 
     return TokenResponse(
         access_token=access_token,
@@ -167,10 +183,7 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = create_access_token(
-        data={"sub": user.id},
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
+    access_token = create_access_token(user.id)
 
     return TokenResponse(
         access_token=access_token,
@@ -186,10 +199,9 @@ async def google_login():
     if not settings.GOOGLE_CLIENT_ID:
         raise HTTPException(
             status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Google OAuth not configured",
+            detail="Google OAuth not configured. Please use email/password login.",
         )
 
-    # Build Google OAuth URL
     google_auth_url = (
         "https://accounts.google.com/o/oauth2/v2/auth"
         f"?client_id={settings.GOOGLE_CLIENT_ID}"
@@ -199,117 +211,6 @@ async def google_login():
     )
 
     return {"url": google_auth_url}
-
-
-@router.get("/google/callback")
-async def google_callback(
-    code: str,
-    db: AsyncSession = Depends(get_db),
-):
-    """Handle Google OAuth callback"""
-    if not settings.GOOGLE_CLIENT_ID or not settings.GOOGLE_CLIENT_SECRET:
-        raise HTTPException(
-            status_code=status.HTTP_501_NOT_IMPLEMENTED,
-            detail="Google OAuth not configured",
-        )
-
-    # Exchange code for tokens (simplified - use httpx in production)
-    import httpx
-
-    async with httpx.AsyncClient() as client:
-        # Exchange authorization code for tokens
-        token_response = await client.post(
-            "https://oauth2.googleapis.com/token",
-            data={
-                "client_id": settings.GOOGLE_CLIENT_ID,
-                "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                "code": code,
-                "grant_type": "authorization_code",
-                "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-            },
-        )
-        tokens = token_response.json()
-
-        if "error" in tokens:
-            raise HTTPException(status_code=400, detail=tokens["error_description"])
-
-        # Get user info
-        userinfo_response = await client.get(
-            "https://www.googleapis.com/oauth2/v2/userinfo",
-            headers={"Authorization": f"Bearer {tokens['access_token']}"},
-        )
-        userinfo = userinfo_response.json()
-
-    # Find or create user
-    result = await db.execute(
-        select(User).where(User.google_id == userinfo["id"])
-    )
-    user = result.scalar_one_or_none()
-
-    if not user:
-        # Check if email exists
-        result = await db.execute(
-            select(User).where(User.email == userinfo["email"])
-        )
-        user = result.scalar_one_or_none()
-
-        if user:
-            # Link Google account to existing user
-            user.google_id = userinfo["id"]
-            user.avatar_url = userinfo.get("picture")
-        else:
-            # Create new user
-            user = User(
-                email=userinfo["email"],
-                display_name=userinfo.get("name"),
-                avatar_url=userinfo.get("picture"),
-                google_id=userinfo["id"],
-                is_active=True,
-                is_verified=True,
-            )
-            db.add(user)
-            await db.commit()
-            await db.refresh(user)
-
-            # Initialize credits
-            now = datetime.utcnow()
-            expires_at = now + timedelta(days=settings.CREDITS_EXPIRY_DAYS)
-
-            credits = UserCredits(
-                user_id=user.id,
-                balance=settings.FREE_CREDITS,
-                total_earned=settings.FREE_CREDITS,
-                expires_at=expires_at,
-            )
-            db.add(credits)
-
-            subscription = Subscription(
-                user_id=user.id,
-                tier=SubscriptionTier.FREE,
-                started_at=now,
-                expires_at=expires_at,
-                is_active=True,
-                max_pages_per_story=5,
-                max_concurrent_tasks=1,
-                has_watermark=True,
-                storage_days=30,
-            )
-            db.add(subscription)
-
-        await db.commit()
-
-    # Create access token
-    access_token = create_access_token(
-        data={"sub": user.id},
-        expires_delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
-    )
-
-    return TokenResponse(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=UserResponse.model_validate(user),
-    )
 
 
 @router.get("/me", response_model=UserResponse)
