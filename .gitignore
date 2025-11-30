@@ -35,3 +35,4 @@ data/*.txt
 # 临时文件
 *.tmp
 *.bak
+*.zip
